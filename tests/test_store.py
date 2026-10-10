@@ -89,3 +89,17 @@ def test_filings_merge_counts_and_retention():
     assert out["daily_counts"]["2026-01-02"] == {"G1": 4}  # carried forward
     assert "2024-01-02" not in out["daily_counts"]
     assert [r["accession"] for r in out["recent"]] == ["a2", "a1", "a3"]
+
+
+def test_same_size_and_target_with_differently_named_buyers_merge():
+    a = deal(issuer="Boots", acquirer="Wittington Investments", value_usd=8.9e9, url="u1")
+    b = deal(issuer="Boots", acquirer="Weston family", value_usd=8.9e9, date="2026-10-02", url="u2")
+    stake = deal(issuer="Boots", acquirer="Fairfax Financial", value_usd=2.3e9, date="2026-10-02", url="u3")
+    out = store.merge([], [a, b, stake])
+    assert sorted(len(d.sources) for d in out) == [1, 2]
+
+
+def test_same_size_and_buyer_with_differently_named_targets_merge():
+    a = deal(issuer="Devon Eagle Ford Assets", acquirer="Crescent Energy", value_usd=4.22e9, url="u1")
+    b = deal(issuer="Eagle Ford assets", acquirer="Crescent Energy", value_usd=4.2e9, url="u2")
+    assert len(store.merge([], [a, b])) == 1

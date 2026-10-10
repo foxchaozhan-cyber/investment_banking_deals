@@ -102,7 +102,10 @@ _NOISE = _rx(
     r"mini-tender|corporate actions?|stocks that|IPO market|IPO pipeline|IPOs? (?:this|next) week|IPO calendar|"
     r"upcoming IPOs|IPO frenzy|fully valued|undervalued|overvalued|what it means|should investors|is it time|"
     r"key takeaways|things to know|week ahead|funding round|series [a-h]|seed round|from investors|"
-    r"venture capital|tender results|dutch auction|self-tender|"
+    r"venture capital|buyout fund|private equity fund|fundrais\w*|from (?:\w+ ){0,2}investors|"
+    r"(?:seeks|raises|secures) .{0,30}\bin debt\b|"
+    r"to (?:buy|acquire|purchase) (?:[\d,.]+ )?(?:\w+ ){0,2}(?:chips|GPUs|acres|farmland|land|aircraft|jets|planes|homes)|weapons|arms deal|missiles|warships|"
+    r"tender results|dutch auction|self-tender|"
     r"tender offers? for (?:its |any and all |all |outstanding |certain |the )*(?:[\w.%$-]+ ){0,4}"
     r"(?:notes|bonds|debentures|debt|securities))\b"
 )
@@ -240,6 +243,13 @@ _MNA_PATTERNS = [
                r"(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:acquisition|purchase|takeover|buyout|merger)\s+(?:of|with)\s+"
                r"(?P<t>.+?)" + _STOP, re.IGNORECASE),
     re.compile(r"^(?P<a>.+?)\s+to\s+take\s+(?P<t>.+?)\s+private\b", re.IGNORECASE),
+    # "Williams in talks on $5.5 billion deal for Momentum Midstream"
+    re.compile(r"^(?P<a>.+?)\s+in\s+(?:advanced\s+|early\s+|exclusive\s+)?talks\s+(?:on|over|for|about)\s+"
+               r"(?:an?\s+)?(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:deal|bid|takeover|acquisition|merger|offer)\s+"
+               r"(?:for|of|with)\s+(?P<t>.+?)" + _STOP, re.IGNORECASE),
+    # "PYPL stock surges to 6-month high on $53B takeover bid" (target only)
+    re.compile(r"^(?P<t>[A-Z][\w.&'-]*(?:\s+[A-Z][\w.&'-]*){0,3})\s+(?i:stock|shares)\s+(?i:surges?|jumps?|soars?|"
+               r"rallies|rises?|spikes?|pops?|climbs?|gains?)\b.*\b(?i:takeover|buyout|acquisition|bid|offer)\b"),
     # "Pacira to be acquired by Viatris"
     re.compile(r"^(?P<t>.+?)\s+(?:to\s+be|is\s+being|will\s+be|agrees\s+to\s+be|set\s+to\s+be)\s+"
                r"(?:acquired|bought|taken\s+private|purchased)\s+by\s+(?P<a>.+?)" + _STOP, re.IGNORECASE),
@@ -272,16 +282,17 @@ _ECM_ISSUER_PATTERNS = [
     # "Seller sells stake in Issuer via block trade"
     re.compile(r"\b(?:stake|shares|holding)s?\s+in\s+(?P<i>.+?)" + _STOP, re.IGNORECASE),
     re.compile(r"\bblock\s+(?:trade|sale)\s+(?:of|in)\s+(?P<i>.+?)(?:\s+shares)?" + _STOP, re.IGNORECASE),
-    # "Issuer's $1bn IPO ..."
-    re.compile(r"^(?P<i>.+?)(?:'s|’s)\s+(?:[$€£¥₹][\d.,]+\s*\w+\s+|\w+\s+)?(?:IPO|initial public offering|"
-               r"share sale|listing|placement|rights issue|offering|debut|convertible)", re.IGNORECASE),
     # "Issuer prices / raises / files for ..."
     re.compile(r"^(?P<i>.+?)\s+(?:prices?|priced|raises?|raised|files?|filed|launch(?:es|ed)?|plans?|planning|"
                r"seeks?|eyes|weighs|considers|is set|sets?|kicks? off|opens?|targets?|aims?|debuts?|jumps?|"
                r"soars?|surges?|slumps?|falls?|rises?|climbs?|crash(?:es)?|plunges?|tanks?|slides?|sinks?|"
                r"tumbles?|gains?|drops?|gets?|wins?|receives?|announces?|announced|proposes?|postpones?|"
                r"withdraws?|pulls?|shelves|to raise|to launch|to list|lists?|sells?|sold|offers?|pops?|"
-               r"hires?|picks?|approves?|fixes|confidentially|board)\b", re.IGNORECASE),
+               r"hires?|picks?|approves?|fixes|confidentially|board|cancels?|cancell?ed|scraps?|scrapped|halts?|"
+               r"revives?|resumes?|relaunch(?:es)?|delays?|refiles?)\b", re.IGNORECASE),
+    # "Issuer's $1bn IPO ..."
+    re.compile(r"^(?P<i>.+?)(?:'s|’s)\s+(?:[$€£¥₹][\d.,]+\s*\w+\s+|\w+\s+)?(?:IPO|initial public offering|"
+               r"share sale|listing|placement|rights issue|offering|debut|convertible)", re.IGNORECASE),
 ]
 
 
@@ -291,6 +302,16 @@ def _clean_party(s: str | None) -> str | None:
     s = _PLACE_POSSESSIVE.sub("", s.strip(" '\"‘’“”.-"))
     s = re.sub(r"^.*\b[\w-]+-(?:led|backed|owned|based|listed)\s+", "", s, flags=re.IGNORECASE)
     if re.search(r"\b(?:block trade|on-market|placement|offering|IPO market)\b", s, re.IGNORECASE):
+        return None
+    if re.match(r"^[\d,.]+\s+(?:acres|hectares|square|sq|tonnes|tons|units|MW|GW)\b", s, re.IGNORECASE):
+        return None
+    # "pain therapy maker Pacira Biosciences" -> "Pacira Biosciences"
+    s = re.sub(r"^(?:[a-z][\w-]*\s+)+(?=[A-Z0-9])", "", s)
+    # "Klarna's $1.4 billion" -> "Klarna"; keeps names like "Macy's Inc".
+    s = re.sub(r"(?:'s|’s)\s+(?=.*(?:[\d$€£¥₹]|\b(?:IPO|offering|listing|share|stake|deal|bid)\b)).*$", "", s)
+    s = re.sub(r"(?:'s|’s)$", "", s)
+    if s.lower() in {"company", "the company", "firm", "rival", "unit", "stake", "it", "business", "group",
+                     "assets", "shares", "deal", "startup", "target"}:
         return None
     s = _TRIM_ARTICLE.sub("", s)
     s = _STAKE.sub("", s)
@@ -313,6 +334,8 @@ def clean_headline(title: str, source_name: str | None = None) -> str:
         head, _, tail = t.rpartition(" - ")
         if len(tail) <= 40:  # Google News appends " - Publisher"
             t = head
+    t = re.sub(r'^["“][^"”]{1,80}["”]\s*[:,-]?\s*', "", t)
+    t = re.sub(r"^[A-Z0-9&' ]{2,20}:\s+", "", t)
     return _LEAD_NOISE.sub("", t).strip()
 
 
@@ -328,7 +351,12 @@ def parties(category: str, headline: str) -> tuple[str | None, str | None]:
             mt = rx.search(h)
             if mt:
                 target = _clean_party(mt.group("t"))
-                acquirer = _clean_party(_REPORTING_VERB.sub("", mt.group("a")))
+                acquirer = mt.groupdict().get("a")
+                if acquirer:
+                    acquirer = _REPORTING_VERB.sub("", acquirer)
+                    acquirer = re.split(r"\s+as\s+", acquirer)[-1]
+                    acquirer = re.sub(r"(?:'s|’s)(?:\s+\S+){2,}\s*,?$", "", acquirer)
+                acquirer = _clean_party(acquirer)
                 if target:
                     return target, acquirer
         return None, None

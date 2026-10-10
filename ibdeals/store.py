@@ -50,9 +50,20 @@ def _within(a: m.Deal, b: m.Deal, days: int) -> bool:
     return gap <= days
 
 
+def _close_values(a: m.Deal, b: m.Deal, tolerance: float = 0.05) -> bool:
+    if not a.value_usd or not b.value_usd:
+        return False
+    return abs(a.value_usd - b.value_usd) <= tolerance * max(a.value_usd, b.value_usd)
+
+
 def same_deal(a: m.Deal, b: m.Deal) -> bool:
     if a.category != b.category:
         return False
+    # Outlets name the same buyer or target differently ("Wittington Investments"
+    # vs "Weston family"); the same size plus one shared party settles it.
+    if (a.category == m.MNA and _close_values(a, b) and _within(a, b, FUZZY_WINDOW_DAYS)
+            and (m.names_match(a.issuer, b.issuer) or m.names_match(a.acquirer, b.acquirer))):
+        return True
     if a.category == m.ECM and a.deal_type != b.deal_type:
         return False
     ta, tb = m.normalize_name(a.issuer), m.normalize_name(b.issuer)
@@ -103,11 +114,14 @@ def merge(existing: Iterable[m.Deal], incoming: Iterable[m.Deal]) -> list[m.Deal
     # Candidate indexes keep matching cheap on a large history: by party name,
     # and (for records without parties) by deal type for the fuzzy fallback.
     by_party: dict[str, list[m.Deal]] = {}
+    by_acquirer: dict[str, list[m.Deal]] = {}
     unnamed: dict[str, list[m.Deal]] = {}
 
     def index(d: m.Deal) -> None:
         key = m.name_key(d.issuer)
         (by_party.setdefault(key, []) if key else unnamed.setdefault(d.deal_type, [])).append(d)
+        if key and d.acquirer:
+            by_acquirer.setdefault(m.name_key(d.acquirer), []).append(d)
 
     for d in deals:
         index(d)
@@ -115,6 +129,8 @@ def merge(existing: Iterable[m.Deal], incoming: Iterable[m.Deal]) -> list[m.Deal
         key = m.name_key(new.issuer)
         if key:
             candidates = by_party.get(key, []) + unnamed.get(new.deal_type, [])
+            if new.acquirer:
+                candidates += by_acquirer.get(m.name_key(new.acquirer), [])
         else:
             candidates = unnamed.get(new.deal_type, []) + [
                 d for ds in by_party.values() for d in ds if d.deal_type == new.deal_type

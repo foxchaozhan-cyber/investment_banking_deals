@@ -99,3 +99,31 @@ def test_question_headline_with_a_real_deal_is_kept():
     h = "Sun Pharma’s Biggest Global Bet, Buys Organon in $11.75 Billion Deal; Pharma Stock Surge 7% - Time to Buy?"
     assert x.classify(h) == (m.MNA, m.ACQUISITION)
     assert x.deal_size(h, m.MNA).amount == pytest.approx(11.75e9)
+
+
+@pytest.mark.parametrize("headline", [
+    "SoftBank seeks up to $100B from Gulf investors for AI buyout fund",
+    "Nvidia Stock Price Today: SpaceX Seeks $40 Billion In Debt To Buy Nvidia AI Chips",
+    "Bell Plans to Buy 895 Acres of Farmland for $52 Billion AI Expansion",
+    "Greece agrees to buy up to $4 billion worth of US weapons",
+])
+def test_purchases_that_are_not_corporate_deals(headline):
+    assert x.classify(headline) is None
+
+
+@pytest.mark.parametrize("raw,target,acquirer", [
+    ('"Starpotle!!...or Chipbucks?": Internet reacts as Starbucks planning to buy Chipotle in a $39 billion deal',
+     "Chipotle", "Starbucks"),
+    ("M&A: Magnolia Oil & Gas to Buy WildFire Energy in $4.06 Billion Deal", "WildFire Energy", "Magnolia Oil & Gas"),
+    ("IN TALKS: Williams in Talks on $5.5 Billion Deal for Momentum Midstream", "Momentum Midstream", "Williams"),
+    ("Viatris to buy pain therapy maker Pacira Biosciences for $1.65 billion", "Pacira Biosciences", "Viatris"),
+    ("PYPL Stock Surges To 6-Month High On $53B Takeover Bid", "PYPL", None),
+])
+def test_party_cleanup_on_live_headlines(raw, target, acquirer):
+    h = x.clean_headline(raw)
+    assert x.parties(m.MNA, h) == (target, acquirer)
+
+
+def test_ecm_issuer_possessive_and_verb_order():
+    assert x.parties(m.ECM, "Klarna's $1.4 billion IPO priced above range") == ("Klarna", None)
+    assert x.parties(m.ECM, "NSE files draft papers for India’s largest IPO worth over Rs 30,000 crore") == ("NSE", None)
