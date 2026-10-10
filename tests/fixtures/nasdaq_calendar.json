@@ -1,0 +1,10 @@
+{"data":{
+ "priced":{"headers":{},"rows":[
+  {"dealID":"1234567-111111","proposedTickerSymbol":"NOVA","companyName":"Nova Robotics Holdings, Inc.","proposedExchange":"NASDAQ Global Select","proposedSharePrice":"21.00","sharesOffered":"25,000,000","pricedDate":"10/08/2026","dollarValueOfSharesOffered":"$525,000,000","dealStatus":"Priced"},
+  {"dealID":"1234567-222222","proposedTickerSymbol":"TINY","companyName":"Tiny Biotech Corp","proposedExchange":"NASDAQ Capital","proposedSharePrice":"4.00","sharesOffered":"1,250,000","pricedDate":"10/07/2026","dollarValueOfSharesOffered":"$5,000,000","dealStatus":"Priced"}]},
+ "upcoming":{"upcomingTable":{"headers":{},"rows":[
+  {"dealID":"1234567-333333","proposedTickerSymbol":"GRID","companyName":"Gridline Energy Inc.","proposedExchange":"NYSE","proposedSharePrice":"17.00-19.00","sharesOffered":"40,000,000","expectedPriceDate":"10/15/2026","dollarValueOfSharesOffered":"$874,000,000"}]},"lastUpdatedTime":"Oct 9, 2026"},
+ "filed":{"headers":{},"rows":[
+  {"dealID":"1234567-444444","proposedTickerSymbol":"","companyName":"Cobalt Payments Ltd","filedDate":"10/06/2026","dollarValueOfSharesOffered":"$100,000,000"}]},
+ "withdrawn":{"headers":{},"rows":[]}
+},"message":null,"status":{"rCode":200,"bCodeMessage":null,"developerMessage":null}}

@@ -1,0 +1,13 @@
+[project]
+name = "ibdeals"
+version = "1.0.0"
+description = "Daily pipeline and dashboard for global ECM and M&A deals"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+claude = ["anthropic>=1.13,<2"]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

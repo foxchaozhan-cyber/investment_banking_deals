@@ -1,0 +1,78 @@
+# Pipeline configuration for the IB deals dashboard.
+# Every value here can be changed without touching code.
+
+[pipeline]
+# How many days of history to keep in data/deals.json (older deals roll off).
+retention_days = 400
+# How far back each daily run re-scans sources. Overlap with previous runs is
+# intentional: it self-heals missed runs and is de-duplicated on merge.
+lookback_days = 7
+# Deals below these USD sizes are kept in the data but hidden by the dashboard's
+# default "major deals" filter. Deals with unknown size are always kept.
+major_ecm_usd = 100_000_000
+major_mna_usd = 500_000_000
+# Storage policy for news-sourced deals: below this size (or unsized) they are
+# dropped after `unsized_news_days`, which keeps deals.json small.
+min_keep_usd = 25_000_000
+unsized_news_days = 30
+
+[sources.nasdaq_ipo]
+# US IPO calendar (NYSE / Nasdaq / NYSE American): priced, upcoming, filed, withdrawn.
+enabled = true
+months_back = 1
+months_ahead = 1
+
+[sources.edgar]
+# SEC EDGAR daily form index: a "filings pulse" of US deal-related filings.
+enabled = true
+# SEC asks automated clients to identify themselves. Override with the
+# SEC_USER_AGENT environment variable (e.g. "Your Name you@example.com").
+user_agent = "ib-deals-dashboard/1.0 (automated daily refresh)"
+
+[sources.news]
+# Google News RSS search: global headlines for M&A and ECM activity.
+enabled = true
+# Only articles newer than this are requested (Google's `when:` operator).
+window = "2d"
+# Regional editions searched for every query: "hl|gl|ceid".
+editions = [
+  "en-US|US|US:en",
+  "en-GB|GB|GB:en",
+  "en-IN|IN|IN:en",
+  "en-SG|SG|SG:en",
+  "en-AU|AU|AU:en",
+]
+queries = [
+  # M&A
+  '"agrees to acquire" OR "agreed to acquire" OR "to acquire" billion',
+  '"agrees to buy" OR "to buy" billion deal',
+  '"merger agreement" OR "all-stock merger" OR "to merge with"',
+  '"takeover bid" OR "takeover offer" OR "tender offer"',
+  '"take private" OR "take-private" OR "leveraged buyout"',
+  '"completes acquisition" OR "completed its acquisition"',
+  # ECM – primary
+  'IPO priced OR "prices IPO" OR "raises" IPO',
+  '"initial public offering" files OR launches',
+  '"follow-on offering" OR "secondary share offering" OR "share placement"',
+  '"rights issue" OR "qualified institutional placement" OR "capital increase"',
+  '"convertible bonds" OR "convertible notes" offering',
+  # ECM – secondary / sell-downs
+  '"block trade" OR "accelerated bookbuild" OR "sells stake" shares',
+]
+# Pause between HTTP requests to be polite to Google.
+request_delay_seconds = 1.0
+
+[sources.manual]
+# Drop CSV exports (Dealogic, LSEG, Bloomberg, PitchBook, ...) into this folder.
+# See data/manual/README.md for the column layout.
+enabled = true
+folder = "data/manual"
+
+[enrich]
+# Optional: structure news headlines with Claude. Runs only when the
+# ANTHROPIC_API_KEY environment variable is set; otherwise rule-based
+# extraction is used.
+model = "claude-opus-5-5"
+effort = "low"
+batch_size = 40
+max_headlines = 400

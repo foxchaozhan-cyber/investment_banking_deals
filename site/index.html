@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global IB Deals</title>
+  <meta name="description" content="Daily-refreshed dashboard of global equity capital markets and M&A deals.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='8' width='3' height='7' rx='1' fill='%232a78d6'/%3E%3Crect x='6.5' y='4' width='3' height='11' rx='1' fill='%23eb6834'/%3E%3Crect x='12' y='1' width='3' height='14' rx='1' fill='%231baf7a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="viz-root">
+  <header class="top">
+    <div>
+      <h1>Global IB deals</h1>
+      <p class="sub">Equity capital markets (primary &amp; secondary) and M&amp;A, refreshed daily</p>
+    </div>
+    <div class="top-right">
+      <p id="updated" class="muted">Loading…</p>
+      <ul id="health" class="health" aria-label="Data source status"></ul>
+      <button id="theme" class="ghost icon" type="button" aria-label="Toggle dark mode" title="Toggle dark mode"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
+    </div>
+  </header>
+
+  <section class="filters" aria-label="Filters">
+    <div class="seg" role="group" aria-label="Date range" id="range">
+      <button type="button" data-days="7">7D</button>
+      <button type="button" data-days="30" aria-pressed="true">30D</button>
+      <button type="button" data-days="90">90D</button>
+      <button type="button" data-days="ytd">YTD</button>
+      <button type="button" data-days="365">12M</button>
+    </div>
+    <label>Category
+      <select id="f-category"><option value="">All</option><option>ECM</option><option>M&amp;A</option></select>
+    </label>
+    <label>Market
+      <select id="f-market"><option value="">All</option><option>Primary</option><option>Secondary</option></select>
+    </label>
+    <label>Type <select id="f-type"><option value="">All</option></select></label>
+    <label>Region <select id="f-region"><option value="">All</option></select></label>
+    <label>Status <select id="f-status"><option value="">All</option></select></label>
+    <label class="check"><input type="checkbox" id="f-major" checked> Major deals only</label>
+    <label class="grow"><span class="sr">Search</span>
+      <input type="search" id="f-q" placeholder="Search company, country, sector…">
+    </label>
+  </section>
+
+  <section class="tiles" id="tiles" aria-label="Key figures"></section>
+
+  <section class="grid">
+    <article class="card wide">
+      <header><h2>Deal value over time</h2><p class="muted" id="ts-sub">US$, sized deals</p></header>
+      <ul class="legend" id="ts-legend"></ul>
+      <div class="chart" id="ts-chart"></div>
+      <details><summary>Show data</summary><div id="ts-table"></div></details>
+    </article>
+    <article class="card">
+      <header><h2>By region</h2><p class="muted">US$, sized deals</p></header>
+      <div class="chart" id="region-chart"></div>
+      <details><summary>Show data</summary><div id="region-table"></div></details>
+    </article>
+    <article class="card">
+      <header><h2>By deal type</h2><p class="muted">US$, sized deals</p></header>
+      <div class="chart" id="type-chart"></div>
+      <details><summary>Show data</summary><div id="type-table"></div></details>
+    </article>
+  </section>
+
+  <section class="card">
+    <header class="row">
+      <div><h2>Deals</h2><p class="muted" id="deal-count"></p></div>
+      <button id="csv" class="ghost" type="button">Download CSV</button>
+    </header>
+    <div class="table-wrap"><table id="deals" class="data"></table></div>
+    <button id="more" class="ghost more" type="button" hidden>Show more</button>
+  </section>
+
+  <section class="card">
+    <header>
+      <h2>US filings pulse</h2>
+      <p class="muted">SEC EDGAR deal-related filings, last 30 days. A leading indicator of US ECM and M&amp;A activity.</p>
+    </header>
+    <div id="pulse" class="pulse"></div>
+    <details><summary>Latest filings</summary><div class="table-wrap"><table id="filings" class="data"></table></div></details>
+  </section>
+
+  <footer class="muted foot">
+    <p>Sources: Nasdaq IPO calendar (US IPOs), SEC EDGAR (US filings), Google News (global headlines), plus any licensed CSV exports in <code>data/manual/</code>.
+    News-derived deals are extracted automatically. Check sizes and parties against the linked sources before relying on them.</p>
+    <p id="fx-note"></p>
+  </footer>
+  <div id="tip" class="tip" role="tooltip" hidden></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

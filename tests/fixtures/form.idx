@@ -1,0 +1,19 @@
+Description:           Daily Index of EDGAR Dissemination Feed by Form Type
+Last Data Received:    October 8, 2026
+Comments:              webmaster@sec.gov
+Anonymous FTP:         ftp://ftp.sec.gov/edgar/
+ 
+ 
+ 
+ 
+Form Type   Company Name                                                  CIK         Date Filed  File Name
+---------------------------------------------------------------------------------------------------------------------------------------------
+10-Q        Some Operating Co                                             1000001     20261008    edgar/data/1000001/0001000001-26-000010.txt
+424B4       Nova Robotics Holdings, Inc.                                  1900001     20261008    edgar/data/1900001/0001193125-26-123456.txt
+424B5       Big Pharma Inc                                                78003       20261008    edgar/data/78003/0001193125-26-123457.txt
+424B7       Holdco Selling Stockholder LP                                 1800002     20261008    edgar/data/1800002/0001193125-26-123458.txt
+DEFM14A     Target Software Corp                                          1500003     20261008    edgar/data/1500003/0001104659-26-200001.txt
+S-1         Cobalt Payments Ltd                                           1950004     20261008    edgar/data/1950004/0001628280-26-300001.txt
+S-1/A       Gridline Energy Inc.                                          1950005     20261008    edgar/data/1950005/0001628280-26-300002.txt
+SC TO-T     Acquirer Parent Inc                                           1200006     20261008    edgar/data/1200006/0001193125-26-123459.txt
+S-4         Merging Bank & Trust Co                                       1300007     20261008    edgar/data/1300007/0001193125-26-123460.txt
