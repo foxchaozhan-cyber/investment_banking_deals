@@ -31,7 +31,10 @@ def test_edgar_index_parsing_keeps_deal_forms_only():
     rows = edgar.parse_index((FIX / "form.idx").read_text())
     forms = sorted(r["form"] for r in rows)
     # 10-Q and the S-1/A amendment are excluded.
-    assert forms == ["424B4", "424B5", "424B7", "DEFM14A", "S-1", "S-4", "SC TO-T"]
+    assert forms == ["424B4", "424B5", "424B5", "424B7", "DEFM14A", "S-1", "S-4", "SC TO-T"]
+    # A company name that fills its whole column (one space before the CIK) still parses.
+    long_name = next(r for r in rows if r["cik"] == "1999999")
+    assert long_name["form"] == "424B5" and long_name["company"].startswith("Extremely Long Company")
     r = next(r for r in rows if r["form"] == "424B7")
     assert r["market"] == m.SECONDARY_MARKET and r["date"] == "2026-10-08"
     assert r["url"] == ("https://www.sec.gov/Archives/edgar/data/1800002/000119312526123458/"

@@ -30,21 +30,33 @@ FORM_GROUPS: list[tuple[str, str, str | None, tuple[str, ...]]] = [
 ]
 _GROUP_BY_FORM = {form: g for g in FORM_GROUPS for form in g[3]}
 
-_LINE = re.compile(
-    r"^(?P<form>\S.*?)\s{2,}(?P<company>\S.*?)\s{2,}(?P<cik>\d+)\s+"
-    r"(?P<date>\d{8}|\d{4}-\d{2}-\d{2})\s+(?P<file>edgar/\S+)\s*$"
-)
+_TAIL = re.compile(r"\s(?P<cik>\d+)\s+(?P<date>\d{8}|\d{4}-\d{2}-\d{2})\s+(?P<file>edgar/\S+)\s*$")
 
 
 def parse_index(text: str) -> list[dict[str, Any]]:
+    """Parse a fixed-width form.YYYYMMDD.idx file.
+
+    The CIK, date and file name are anchored from the right; form type and
+    company are split at the "Company Name" column taken from the header, so
+    a company name that fills its whole column still parses.
+    """
+    company_col = 12
     filings = []
     for line in text.splitlines():
-        mt = _LINE.match(line)
+        if line.startswith("Form Type") and "Company Name" in line:
+            company_col = line.index("Company Name")
+            continue
+        mt = _TAIL.search(line)
         if not mt:
             continue
-        form = mt.group("form").strip()
+        head = line[: mt.start()]
+        form, company = head[:company_col].strip(), head[company_col:].strip()
+        if head[company_col - 1: company_col] not in (" ", ""):
+            # Form type overflowed its column: fall back to the first double space.
+            form, _, company = head.partition("  ")
+            form, company = form.strip(), company.strip()
         group = _GROUP_BY_FORM.get(form)
-        if not group:
+        if not group or not company:
             continue
         d = mt.group("date").replace("-", "")
         filename = mt.group("file")
@@ -57,7 +69,7 @@ def parse_index(text: str) -> list[dict[str, Any]]:
             "group": group[0],
             "category": group[1],
             "market": group[2],
-            "company": mt.group("company").strip(),
+            "company": company,
             "cik": cik,
             "url": f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession.replace('-', '')}/{accession}-index.htm",
         })

@@ -31,6 +31,23 @@ CASES = [
     ("Shein files confidentially for Hong Kong IPO", m.IPO, "Filed", "Shein", None, None, "Hong Kong"),
     ("Aramco raises $11.2 billion in secondary share offering",
      m.SECONDARY, "Priced", "Aramco", None, (11.2e9, "USD"), "Saudi Arabia"),
+    # Real headline shapes from the first live run.
+    ("Crescent Energy to Buy Devon Eagle Ford Assets for $4.22 Billion, Secures $2.0 Billion Bridge",
+     m.ACQUISITION, "Announced", "Devon Eagle Ford Assets", "Crescent Energy", (4.22e9, "USD"), None),
+    ("PTC Industries Raises Nearly ₹18,000 Crore Via Institutional Share Placement",
+     m.FOLLOW_ON, "Priced", "PTC Industries", None, (180e9, "INR"), "India"),
+    ("Copart Extends ACV Auctions Tender Offer to Oct. 15 as Tendered Shares Pass 50%",
+     m.TENDER, "Announced", "ACV Auctions", "Copart", None, None),
+    ("Tata Motors Unit Raises Iveco Group Tender Offer To €14.40 Per Share, total Outlay ₹34,778 crore",
+     m.TENDER, "Announced", "Iveco Group", "Tata Motors", (347.78e9, "INR"), "India"),
+    ("Pacira BioSciences to Be Acquired by Viatris in $36.50-Per-Share All-Cash Tender Offer",
+     m.TENDER, "Announced", "Pacira BioSciences", "Viatris", None, None),
+    ("Starbucks hires advisors for possible Chipotle takeover bid",
+     m.ACQUISITION, "Rumored", None, None, None, None),
+    ("Ola Electric Shares Crash 8% As Board Sets Rs 27 Rights Issue Price",
+     m.FOLLOW_ON, "Announced", "Ola Electric", None, None, "India"),
+    ("Infineon Completes Acquisition of C2i Semiconductors",
+     m.ACQUISITION, "Completed", "C2i Semiconductors", "Infineon", None, None),
 ]
 
 
@@ -39,7 +56,7 @@ def test_headline_extraction(headline, deal_type, status, target, acquirer, mone
     category, got_type = x.classify(headline)
     assert got_type == deal_type
     assert category == m.CATEGORY_BY_TYPE[deal_type]
-    assert x.status_for(category, headline) == status
+    assert x.status_for(category, headline, deal_type) == status
     assert x.parties(category, headline) == (target, acquirer)
     size = x.deal_size(headline, category)
     if money is None:
@@ -55,7 +72,14 @@ def test_headline_extraction(headline, deal_type, status, target, acquirer, mone
     "Apple announces $110 billion share buyback",
     "Analysts raise price target on Nvidia to $250",
     "Fed holds rates steady as inflation cools",
+    "Hudson Pacific Properties Announces Expiration and Tender Results of Cash Tender Offer for Outstanding Notes",
+    "CrowdStrike warns shareholders against mini-tender offer",
+    "India’s IPO Market Raises Record Dollar 12.5 Billion in Nine Months",
+    "Dividend, Rights Issue, Stock Split Alert: Five stocks that will see corporate actions next week",
+    "Is InPost (ENXTAM:INPST) Fully Valued On Its Completed €7b Take Private Deal?",
+    "Jeff Bezos Says Blue Origin IPO Likely in Coming Years After Space Company Raises $10 Billion From Investors",
 ])
+
 def test_noise_is_not_a_deal(headline):
     assert x.classify(headline) is None
 
@@ -69,3 +93,9 @@ def test_amount_formats():
     amounts = [(a.amount, a.currency) for a in x.find_amounts(
         "US$1.2 billion, €300m, £45 mln, 5 billion yuan, ¥200bn, A$2.5bn and $18 per share")]
     assert amounts == [(1.2e9, "USD"), (3e8, "EUR"), (4.5e7, "GBP"), (5e9, "CNY"), (2e11, "JPY"), (2.5e9, "AUD")]
+
+
+def test_question_headline_with_a_real_deal_is_kept():
+    h = "Sun Pharma’s Biggest Global Bet, Buys Organon in $11.75 Billion Deal; Pharma Stock Surge 7% - Time to Buy?"
+    assert x.classify(h) == (m.MNA, m.ACQUISITION)
+    assert x.deal_size(h, m.MNA).amount == pytest.approx(11.75e9)

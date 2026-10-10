@@ -63,7 +63,7 @@ def headlines_to_deals(items: list[dict[str, Any]], fx: FX, enrich_cfg: dict[str
         issuer, acquirer = extract.parties(category, h)
         money = extract.deal_size(h, category)
         value, currency = (money.amount, money.currency) if money else (None, None)
-        status = extract.status_for(category, h)
+        status = extract.status_for(category, h, deal_type)
         country, sector, confidence = extract.country_for(h), None, 0.4
         if ai is not None:
             issuer = ai.get("issuer_or_target") or issuer

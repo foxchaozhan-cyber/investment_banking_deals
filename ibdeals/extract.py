@@ -37,7 +37,7 @@ _NUM = r"(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
 _UNIT = r"(trillion|billion|million|crore|lakh|tln|bln|mln|tn|bn|mn|cr|b|m)\b"
 _PREFIX_RE = re.compile(
     r"(US\$|HK\$|AU\$|NZ\$|CA\$|A\$|C\$|S\$|R\$|USD|HKD|AUD|CAD|SGD|EUR|GBP|JPY|CNY|RMB|INR|"
-    r"CHF|SEK|NOK|DKK|SAR|AED|KRW|Rs\.?|\$|€|£|¥|₹|₩)\s?" + _NUM + r"(?:\s?-?" + _UNIT + r")?",
+    r"CHF|SEK|NOK|DKK|SAR|AED|KRW|Rs\.?|\$|€|£|¥|₹|₩)\s?" + _NUM + r"(?:\s?-?(?i:" + _UNIT + r"))?",
 )
 _SUFFIX_RE = re.compile(
     _NUM + r"\s?" + _UNIT + r"\s+(" + "|".join(_SUFFIX_CCY) + r")\b", re.IGNORECASE
@@ -98,7 +98,13 @@ _NOISE = _rx(
     r"\b(stocks? to buy|shares to buy|buy rating|strong buy|should you buy|buy the dip|"
     r"buy or sell|buyback|share repurchase|repurchase program|price target|analysts?|"
     r"top \d+|best (?:stocks|ipos)|how to|what is|explained|opinion|podcast|webinar|"
-    r"etf|mutual fund|crypto(?:currency)?|bitcoin|token sale|watchlist|grey market premium|gmp)\b"
+    r"etf|mutual fund|crypto(?:currency)?|bitcoin|token sale|watchlist|grey market premium|gmp|"
+    r"mini-tender|corporate actions?|stocks that|IPO market|IPO pipeline|IPOs? (?:this|next) week|IPO calendar|"
+    r"upcoming IPOs|IPO frenzy|fully valued|undervalued|overvalued|what it means|should investors|is it time|"
+    r"key takeaways|things to know|week ahead|funding round|series [a-h]|seed round|from investors|"
+    r"venture capital|tender results|dutch auction|self-tender|"
+    r"tender offers? for (?:its |any and all |all |outstanding |certain |the )*(?:[\w.%$-]+ ){0,4}"
+    r"(?:notes|bonds|debentures|debt|securities))\b"
 )
 _ECM_SECONDARY = _rx(
     r"\b(block trade|block sale|accelerated bookbuild|overnight placing|sell-?down|"
@@ -106,13 +112,13 @@ _ECM_SECONDARY = _rx(
     r"(?:\d+(?:\.\d+)?% )?(?:stake|shares|holding)s? (?:in|of) .+ (?:via|through|in a) (?:placement|placing|block|bookbuild|share sale|offering))\b"
 )
 _ECM_CONVERTIBLE = _rx(r"\b(convertible (?:bonds?|notes?|senior notes|debt|offering)|exchangeable (?:bonds?|notes?))\b")
-_MNA_TENDER = _rx(r"\b(tender offer|takeover bid|takeover offer|hostile bid|unsolicited (?:bid|offer))\b")
+_MNA_TENDER = _rx(r"\b(tender offer)\b")
 _MNA_BUYOUT = _rx(r"\b(take[- ]private|taking .+ private|to take .+ private|go[- ]private|leveraged buyout|LBO|buyout)\b")
 _MNA_MERGER = _rx(r"\b(merger|merge|merges|merging|all-stock combination|combine with)\b")
 _MNA_ACQ = _rx(
     r"\b(acquire|acquires|acquired|acquiring|acquisition|to buy|buys|bought|agrees to buy|"
     r"agreed to buy|purchase of|to purchase|purchases|takeover|take over|takes over|snaps? up|"
-    r"bid for|deal for|offer for)\b"
+    r"bid for|deal for|offer for|takeover bid|takeover offer|hostile bid|unsolicited (?:bid|offer))\b"
     r"|(?:'s|’s)\s+(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:\w+\s+)?(?:bid|offer|approach)\b"
 )
 _ECM_IPO = _rx(r"\b(IPO|IPOs|initial public offering|listing debut|market debut|trading debut|debuts? on|"
@@ -124,9 +130,14 @@ _ECM_FOLLOW_ON = _rx(
 )
 
 
+# Commentary phrased as a question ("Is X fully valued after ...?").
+_QUESTION = re.compile(r"^(?:is|are|why|what|how|did|does|do|should|can|could|will|would|has|have)\b.*\?\s*$",
+                       re.IGNORECASE)
+
+
 def classify(headline: str) -> tuple[str, str] | None:
     """Return (category, deal_type) or None when the headline is not a deal."""
-    if _NOISE.search(headline):
+    if _NOISE.search(headline) or _QUESTION.match(headline):
         return None
     if _ECM_SECONDARY.search(headline):
         return m.ECM, m.SECONDARY
@@ -157,12 +168,13 @@ _MNA_STATUS = [
     ("Pending", _rx(r"\b(approv\w*|clears|cleared|wins? (?:\w+ )?(?:nod|approval)|shareholders back|vote)\b")),
     ("Rumored", _rx(r"\b(in talks|talks to|held talks|consider\w*|explor\w*|weigh\w*|mull\w*|eyes|eyeing|"
                     r"nears?|said to|sources|reportedly|approach\w*|could|may|might|interest in|"
-                    r"preparing (?:a )?bid|potential)\b")),
+                    r"preparing (?:a )?bid|potential|possible|hires? (?:\w+ )?advis[eo]rs?|advis[eo]rs)\b")),
 ]
 _ECM_STATUS = [
     ("Withdrawn", _rx(r"\b(postpon\w*|withdraw\w*|pulls?|pulled|shelv\w*|scrap\w*|delays?|delayed|cancel\w*)\b")),
-    ("Completed", _rx(r"\b(debut\w*|begins trading|starts trading|first day of trading|shares (?:jump|soar|surge|"
-                      r"fall|slide|rise|climb|sink|tumble|pop)\w*|lists? on|listed on)\b")),
+    ("Completed", _rx(r"\b(debut\w*|begins trading|starts trading|first day of trading|lists? on|listed on|"
+                      r"completes?|completed|closes|closed)\b")),
+    ("Listed", _rx(r"\bshares (?:jump|soar|surge|fall|slide|rise|climb|sink|tumble|pop)\w*")),
     ("Priced", _rx(r"\b(prices|priced|pricing|raises|raised|raising|fetch\w*|nets|netted|upsiz\w*|"
                    r"oversubscribed|subscribed \d+)\b")),
     ("Filed", _rx(r"\b(files|filed|filing|confidentially|DRHP|draft red herring|prospectus)\b")),
@@ -172,9 +184,15 @@ _ECM_STATUS = [
 ]
 
 
-def status_for(category: str, headline: str) -> str:
+def status_for(category: str, headline: str, deal_type: str | None = None) -> str:
     rules = _MNA_STATUS if category == m.MNA else _ECM_STATUS
     for status, rx in rules:
+        if status == "Listed":
+            # A share-price move on listing day means the IPO is done; for a
+            # follow-on it is just market colour.
+            if deal_type == m.IPO and rx.search(headline):
+                return "Completed"
+            continue
         if rx.search(headline):
             return status
     return "Announced"
@@ -189,7 +207,8 @@ _LEAD_NOISE = re.compile(
 )
 _STOP = (r"(?=\s+(?:for|in|at|from|valued|worth|with|amid|after|as|to|via|on|by|deal|"
          r"plans?|seeks?|that|which|while|ahead|over|blocked|rejected|approved|cleared|wins|clears|"
-         r"is|was|gets|faces|draws|sparks|collapses|ends|shares|stock)\b|\s*[,;:(|–—]|\s+-\s|$)")
+         r"is|was|gets|faces|draws|sparks|collapses|ends|shares|stock|sees|hits|nears|receives|attracts|"
+         r"reaches|passes)\b|\s*[,;:(|–—]|\s+-\s|$)")
 _VERBS_ACQ = (r"(?:(?:agrees?|agreed|is set|set|moves|plans|is|are|nears deal|in talks|"
               r"said|announces|announced|signs deal|reaches deal|strikes deal|seals deal|will)\s+)?"
               r"(?:to\s+)?(?:acquire|acquires|acquired|buy|buys|bought|purchase|purchases|"
@@ -221,15 +240,25 @@ _MNA_PATTERNS = [
                r"(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:acquisition|purchase|takeover|buyout|merger)\s+(?:of|with)\s+"
                r"(?P<t>.+?)" + _STOP, re.IGNORECASE),
     re.compile(r"^(?P<a>.+?)\s+to\s+take\s+(?P<t>.+?)\s+private\b", re.IGNORECASE),
+    # "Pacira to be acquired by Viatris"
+    re.compile(r"^(?P<t>.+?)\s+(?:to\s+be|is\s+being|will\s+be|agrees\s+to\s+be|set\s+to\s+be)\s+"
+               r"(?:acquired|bought|taken\s+private|purchased)\s+by\s+(?P<a>.+?)" + _STOP, re.IGNORECASE),
+    # "Copart extends ACV Auctions tender offer", "KKR postpones Taiyo Holdings tender offer"
+    re.compile(r"^(?P<a>.+?)\s+(?i:extends|raises|delays|postpones|launches|completes|lifts|sweetens|ups|"
+               r"increases|begins|commences|withdraws|drops|abandons|wins|closes|advances|starts|confirms|"
+               r"announces|makes|revises)\s+(?i:its\s+|the\s+)?(?:[$€£¥][\d.,]+\s*\w+\s+)?(?P<t>[A-Z][\w&.\'-]*"
+               r"(?:\s+[A-Z0-9][\w&.\'-]*){0,4})\s+(?:tender\s+offer|takeover\s+bid|takeover\s+offer|takeover|"
+               r"buyout|acquisition|bid)\b", re.IGNORECASE),
     # "Target rejects Bidder's $47 billion offer"
     re.compile(r"^(?P<t>.+?)\s+(?:rejects|rebuffs|spurns|accepts|backs|weighs|considers|receives|gets)\s+"
                r"(?P<a>.+?)(?:'s|’s)\s+(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:\w+\s+)?(?:bid|offer|approach|proposal)\b",
                re.IGNORECASE),
-    re.compile(r"^(?P<a>.+?)(?:'s|’s)\s+(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:hostile\s+|all-cash\s+)?"
+    re.compile(r"^(?P<a>.+?)(?:'s|’s)\s+(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:hostile\s+|all-cash\s+)?(?:tender\s+)?"
                r"(?:bid|offer|takeover|acquisition|purchase|deal|merger)\s+(?:for|of|with)\s+(?P<t>.+?)" + _STOP,
                re.IGNORECASE),
-    re.compile(r"^(?P<a>.+?)\s+(?:launches|commences|makes|lodges|submits|tables|ups|raises|sweetens)\s+"
-               r"(?:an?\s+|its\s+)?(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:hostile\s+|unsolicited\s+|all-cash\s+|cash\s+)?"
+    re.compile(r"^(?P<a>.+?)\s+(?:launches|commences|makes|lodges|submits|tables|ups|raises|sweetens|confirms|"
+               r"announces|extends|amends|completes|increases|improves|revises|prepares|plans|weighs|considers)\s+"
+               r"(?:an?\s+|its\s+|the\s+)?(?:preliminary\s+|final\s+|revised\s+|improved\s+|possible\s+)?(?:[$€£¥][\d.,]+\s*\w+\s+)?(?:hostile\s+|unsolicited\s+|all-cash\s+|cash\s+)?"
                r"(?:tender\s+offer|takeover\s+bid|takeover\s+offer|bid|offer)\s+for\s+(?P<t>.+?)" + _STOP,
                re.IGNORECASE),
     re.compile(r"^(?P<a>.+?)\s+(?:and|&)\s+(?P<t>.+?)\s+(?:to\s+merge|agree\s+to\s+merge|announce\s+merger|"
@@ -247,11 +276,12 @@ _ECM_ISSUER_PATTERNS = [
     re.compile(r"^(?P<i>.+?)(?:'s|’s)\s+(?:[$€£¥₹][\d.,]+\s*\w+\s+|\w+\s+)?(?:IPO|initial public offering|"
                r"share sale|listing|placement|rights issue|offering|debut|convertible)", re.IGNORECASE),
     # "Issuer prices / raises / files for ..."
-    re.compile(r"^(?P<i>.+?)\s+(?:prices|priced|raises|raised|files|filed|launches|launched|plans|planning|"
-               r"seeks|eyes|weighs|considers|is set|set|kicks off|opens|targets|aims|debuts|jumps|soars|surges|"
-               r"slumps|falls|rises|climbs|gets|wins|receives|announces|announced|proposes|postpones|"
-               r"withdraws|pulls|shelves|to raise|to launch|to list|lists|sells|sold|offers|pops|hires|picks|"
-               r"confidentially)\b", re.IGNORECASE),
+    re.compile(r"^(?P<i>.+?)\s+(?:prices?|priced|raises?|raised|files?|filed|launch(?:es|ed)?|plans?|planning|"
+               r"seeks?|eyes|weighs|considers|is set|sets?|kicks? off|opens?|targets?|aims?|debuts?|jumps?|"
+               r"soars?|surges?|slumps?|falls?|rises?|climbs?|crash(?:es)?|plunges?|tanks?|slides?|sinks?|"
+               r"tumbles?|gains?|drops?|gets?|wins?|receives?|announces?|announced|proposes?|postpones?|"
+               r"withdraws?|pulls?|shelves|to raise|to launch|to list|lists?|sells?|sold|offers?|pops?|"
+               r"hires?|picks?|approves?|fixes|confidentially|board)\b", re.IGNORECASE),
 ]
 
 
@@ -259,6 +289,9 @@ def _clean_party(s: str | None) -> str | None:
     if not s:
         return None
     s = _PLACE_POSSESSIVE.sub("", s.strip(" '\"‘’“”.-"))
+    s = re.sub(r"^.*\b[\w-]+-(?:led|backed|owned|based|listed)\s+", "", s, flags=re.IGNORECASE)
+    if re.search(r"\b(?:block trade|on-market|placement|offering|IPO market)\b", s, re.IGNORECASE):
+        return None
     s = _TRIM_ARTICLE.sub("", s)
     s = _STAKE.sub("", s)
     for _ in range(2):
@@ -283,6 +316,10 @@ def clean_headline(title: str, source_name: str | None = None) -> str:
     return _LEAD_NOISE.sub("", t).strip()
 
 
+_REPORTING_VERB = re.compile(r"\s+(?:announces?|confirms?|extends?|completes?|launches|says|reports|"
+                             r"updates|welcomes|backs)\b.*$", re.IGNORECASE)
+
+
 def parties(category: str, headline: str) -> tuple[str | None, str | None]:
     """Return (issuer_or_target, acquirer)."""
     h = _LEAD_NOISE.sub("", headline)
@@ -290,7 +327,8 @@ def parties(category: str, headline: str) -> tuple[str | None, str | None]:
         for rx in _MNA_PATTERNS:
             mt = rx.search(h)
             if mt:
-                target, acquirer = _clean_party(mt.group("t")), _clean_party(mt.group("a"))
+                target = _clean_party(mt.group("t"))
+                acquirer = _clean_party(_REPORTING_VERB.sub("", mt.group("a")))
                 if target:
                     return target, acquirer
         return None, None
